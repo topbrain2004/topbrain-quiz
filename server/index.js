@@ -68,6 +68,10 @@ io.on('connection', (socket) => {
         gameManager.endGame();
     });
 
+    socket.on('endClass', () => {
+        gameManager.endClass();
+    });
+
     socket.on('requestState', () => {
         socket.emit('gameState', gameManager.gameState);
         socket.emit('studentList', Array.from(gameManager.students.values()));
