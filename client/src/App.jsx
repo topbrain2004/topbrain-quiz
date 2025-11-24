@@ -8,6 +8,8 @@ function App() {
   const [role, setRole] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const r = params.get('role');
+    console.log("Current URL:", window.location.href);
+    console.log("Parsed Role:", r);
     if (r === 'teacher') return 'teacher';
     if (r === 'student') return 'student';
     return null; // No role specified

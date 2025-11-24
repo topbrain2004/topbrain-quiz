@@ -12,7 +12,8 @@ class GameManager {
                 correct: "축하합니다!",
                 wrong: "아쉽게도 틀렸네요 다음문제에 도전하세요"
             },
-            correctAnswer: null
+            correctAnswer: null,
+            isClassEnded: false
         };
         this.timerInterval = null;
     }
@@ -23,15 +24,28 @@ class GameManager {
             ...studentData,
             id: socketId,
             score: 0,
-            currentAnswer: null
+            currentAnswer: null,
+            connected: true
         });
         this.broadcastStudentList();
     }
 
     // Student disconnects
     removeStudent(socketId) {
-        this.students.delete(socketId);
-        this.broadcastStudentList();
+        if (this.gameState.status === 'ended') {
+            // If game is ended, don't delete the student, just mark as offline
+            // This prevents data loss before teacher saves the CSV
+            const student = this.students.get(socketId);
+            if (student) {
+                student.connected = false;
+                this.broadcastStudentList();
+            }
+        } else {
+            // During the game, if they disconnect, we remove them (or we could keep them too)
+            // For now, keeping original behavior for mid-game disconnects to avoid duplicates on refresh
+            this.students.delete(socketId);
+            this.broadcastStudentList();
+        }
     }
 
     // Teacher starts a question
@@ -137,12 +151,21 @@ class GameManager {
         this.gameState.status = 'waiting';
         this.gameState.correctAnswer = null;
         this.gameState.totalQuestions = 0;
+        this.gameState.isClassEnded = false;
         this.io.emit('gameState', this.gameState);
         this.broadcastStudentList();
     }
 
     endGame() {
+        // Just show results, don't allow exit yet
         this.gameState.status = 'ended';
+        this.io.emit('gameState', this.gameState);
+    }
+
+    endClass() {
+        // Allow students to exit
+        this.gameState.status = 'ended';
+        this.gameState.isClassEnded = true;
         this.io.emit('gameState', this.gameState);
     }
 }

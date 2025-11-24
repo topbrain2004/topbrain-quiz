@@ -10,6 +10,7 @@ function StudentClient() {
     const [isJoined, setIsJoined] = useState(false);
     const [isConnected, setIsConnected] = useState(socket.connected);
     const [myScore, setMyScore] = useState(0);
+    const [stats, setStats] = useState(null);
 
     // Form State
     const [schoolNameInput, setSchoolNameInput] = useState('');
@@ -53,6 +54,10 @@ function StudentClient() {
             }
         });
 
+        socket.on('statsReveal', (data) => {
+            setStats(data);
+        });
+
         socket.on('timerUpdate', setTimeLeft);
 
         // Request initial state if already connected
@@ -65,6 +70,7 @@ function StudentClient() {
             socket.off('disconnect', onDisconnect);
             socket.off('gameState');
             socket.off('studentList');
+            socket.off('statsReveal');
             socket.off('timerUpdate');
         };
     }, []);
@@ -211,6 +217,26 @@ function StudentClient() {
                 <h2>정답 공개 대기 중...</h2>
                 <p>곧 결과가 발표됩니다!</p>
                 {myAnswer && <p>내가 쓴 답: {myAnswer}번</p>}
+
+                {gameState.status === 'result_stats' && stats && (
+                    <div className="stats-chart mt-4">
+                        <h3>친구들의 선택</h3>
+                        <div className="stats-grid">
+                            {Object.entries(stats).map(([ans, count]) => (
+                                <div key={ans} className="stat-item" style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <div className="stat-label" style={{ width: '50px', fontWeight: 'bold' }}>{ans}{gameState.questionType === 'choice' ? '번' : ''}</div>
+                                    <div className="stat-bar-container" style={{ flex: 1, background: 'rgba(255,255,255,0.1)', height: '20px', borderRadius: '10px', margin: '0 10px', overflow: 'hidden' }}>
+                                        <div
+                                            className="stat-bar"
+                                            style={{ width: `${(count / Object.values(stats).reduce((a, b) => a + b, 0)) * 100}%`, background: 'var(--primary-color)', height: '100%' }}
+                                        ></div>
+                                    </div>
+                                    <div className="stat-count" style={{ width: '40px', textAlign: 'right' }}>{count}명</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }
@@ -243,17 +269,14 @@ function StudentClient() {
     if (gameState.status === 'ended') {
         return (
             <div className="card animate-fade-in" style={{ textAlign: 'center' }}>
-                <h1>{name}님 수고하셨습니다!</h1>
-                <div className="score-display" style={{ margin: '2rem 0', fontSize: '1.5rem' }}>
-                    <p>맞은 문제 수</p>
-                    <strong style={{ fontSize: '3rem', color: 'var(--primary-color)' }}>{myScore} / {gameState.totalQuestions}</strong>
-                </div>
-                <button onClick={closeWindow} className="w-100">마침</button>
             </div>
-        );
+        )
     }
+            </div >
+        );
+}
 
-    return <div>Unknown State</div>;
+return <div>Unknown State</div>;
 }
 
 export default StudentClient;

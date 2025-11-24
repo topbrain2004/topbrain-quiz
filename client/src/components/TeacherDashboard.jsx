@@ -5,6 +5,7 @@ function TeacherDashboard() {
     const [gameState, setGameState] = useState(null);
     const [students, setStudents] = useState([]);
     const [stats, setStats] = useState(null);
+    const [isConnected, setIsConnected] = useState(socket.connected);
 
     // Setup Form State
     const [timer, setTimer] = useState(30);
@@ -14,39 +15,46 @@ function TeacherDashboard() {
         wrong: "아쉽게도 틀렸네요 다음문제에 도전하세요"
     });
     const [correctAnswer, setCorrectAnswer] = useState('');
+    const [showFinalResults, setShowFinalResults] = useState(false);
 
     useEffect(() => {
         const onConnect = () => {
+            console.log('Connected to server');
+            setIsConnected(true);
             socket.emit('requestState');
         };
 
+        const onDisconnect = () => {
+            console.log('Disconnected from server');
+            setIsConnected(false);
+        };
+
         socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
         socket.on('gameState', setGameState);
         socket.on('studentList', setStudents);
         socket.on('statsReveal', setStats);
-        socket.on('answerSubmitted', () => {
-            // Optional: Trigger a sound or visual flash
-        });
 
-        // Request initial state if already connected
+        // Initial check
         if (socket.connected) {
+            setIsConnected(true);
             socket.emit('requestState');
         }
 
         return () => {
             socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
             socket.off('gameState');
             socket.off('studentList');
             socket.off('statsReveal');
-            socket.off('answerSubmitted');
         };
     }, []);
 
     const startQuestion = () => {
         socket.emit('updateFeedback', feedback);
         socket.emit('startQuestion', { type: qType, timer: parseInt(timer) });
-        setStats(null); // Reset stats
-        setCorrectAnswer(''); // Reset local answer input
+        setStats(null);
+        setCorrectAnswer('');
     };
 
     const revealStats = () => {
@@ -64,21 +72,15 @@ function TeacherDashboard() {
         }
     }
 
-    const [showFinalResults, setShowFinalResults] = useState(false);
-
-    if (!gameState) return <div className="loader">Loading...</div>;
-
-    const submittedCount = students.filter(s => s.currentAnswer).length;
-
     const downloadCSV = () => {
         const headers = ["순위,이름,학교/학년,점수,총문제수"];
         const sortedStudents = [...students].sort((a, b) => b.score - a.score);
 
         const rows = sortedStudents.map((s, index) => {
-            return `${index + 1},${s.name},${s.school} ${s.grade},${s.score},${gameState.totalQuestions}`;
+            return `${index + 1},${s.name},${s.school} ${s.grade},${s.score},${gameState?.totalQuestions || 0}`;
         });
 
-        const csvContent = "\uFEFF" + [headers, ...rows].join("\n"); // Add BOM for Korean support
+        const csvContent = "\uFEFF" + [headers, ...rows].join("\n");
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
 
@@ -90,6 +92,18 @@ function TeacherDashboard() {
         document.body.removeChild(link);
     };
 
+    if (!gameState) {
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <h2>⏳ Loading Game Data...</h2>
+                <p>Status: {isConnected ? "🟢 Connected" : "🔴 Disconnected (Connecting...)"}</p>
+                {!isConnected && <p>서버와 연결 중입니다. 잠시만 기다려주세요...</p>}
+            </div>
+        );
+    }
+
+    const submittedCount = students.filter(s => s.currentAnswer).length;
+
     // Final Results View
     if (showFinalResults) {
         const sortedStudents = [...students].sort((a, b) => b.score - a.score);
@@ -98,6 +112,12 @@ function TeacherDashboard() {
                 <header className="card mb-4" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h1>🏆 최종 결과 발표 🏆</h1>
                     <div style={{ display: 'flex', gap: '10px' }}>
+                        <button onClick={() => {
+                            if (confirm("수업을 종료하시겠습니까? 학생들에게 나가기 버튼이 표시됩니다.")) {
+                                socket.emit('endClass');
+                                alert("수업이 종료되었습니다.");
+                            }
+                        }} style={{ background: '#ef4444' }}>⛔ 수업 종료</button>
                         <button onClick={downloadCSV} style={{ background: '#22c55e' }}>📥 결과 저장 (엑셀)</button>
                         <button onClick={() => setShowFinalResults(false)}>돌아가기</button>
                     </div>
