@@ -151,7 +151,7 @@ function TeacherDashboard() {
     return (
         <div className="dashboard-container">
             <header className="card mb-4">
-                <h1>Teacher Dashboard</h1>
+                <h1>Teacher Dashboard <span style={{ fontSize: '0.8rem', color: '#888' }}>(v1.1)</span></h1>
                 <div className="status-bar">
                     <span>Status: <strong>{gameState.status}</strong></span>
                     <span>Students: <strong>{students.length}명</strong></span>
