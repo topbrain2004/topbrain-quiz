@@ -269,14 +269,25 @@ function StudentClient() {
     if (gameState.status === 'ended') {
         return (
             <div className="card animate-fade-in" style={{ textAlign: 'center' }}>
-            </div>
-        )
-    }
-            </div >
-        );
-}
+                <h1>{name}님 수고하셨습니다!</h1>
+                <div className="score-display" style={{ margin: '2rem 0', fontSize: '1.5rem' }}>
+                    <p>맞은 문제 수</p>
+                    <strong style={{ fontSize: '3rem', color: 'var(--primary-color)' }}>{myScore} / {gameState.totalQuestions}</strong>
+                </div>
 
-return <div>Unknown State</div>;
+                {gameState.isClassEnded ? (
+                    <button onClick={closeWindow} className="w-100">마침 (나가기)</button>
+                ) : (
+                    <div className="waiting-message">
+                        <p>선생님이 수업을 종료할 때까지 잠시만 기다려주세요.</p>
+                        <div className="loader" style={{ margin: '1rem auto' }}></div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    return <div>Unknown State</div>;
 }
 
 export default StudentClient;
